@@ -1,0 +1,88 @@
+---
+title: "Practical Machine Lerning - Fitness Data"
+author: "Brad Allen"
+date: "February 12, 2016"
+output: html_document
+---
+
+# Executive Summary
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. 
+
+Using a weight lifting exercise dataset from http://groupware.les.inf.puc-rio.br/har, this analysis attempts to predict the manner of activity (sitting, standing, walking, etc) using a variety of gyroscopes and acceleromters. Using Random Forest classification, we ultimately develop a model that has greater than 99% accuracy on a holdout set. 
+
+# Analysis
+
+We begin the analysis with some exploratory measures to understand the shape and size of the data. We find that there are 19,622 observations of 160 variables many of which do not have information (read NAs). 
+
+Originally, I removed the rows with NAs (using complete.cases()), but that left me with 30 rows and 160 variables - it did not bring me any closer to making an inference. I then explored removing the columns with NAs. Doing some high-level analysis of the NAs, we can determine that there is no pattern of NAs relative to the object we are classifying (eg, distribution of NA between "classe" A, B, C, D, or E).
+
+Stripping the dataset of the variables with NAs, we were left with 93 variables. I originally attempted to run a Random Forest on this dataset and was surprised to find that R would not do an analysis on a set with greater than 53 dimensions. I was hoping I could determine which variables were most important and call it a day. :) Generally speaking, Random Forests have great predictive ability and are useful if we are not required to explain the logic embedded in the decision tree. (For example, healthcare applications might care about the path taken to a conclusion.)
+
+I played around a little with Principal Component Analysis (PCA, in the appendix) and realized I needed to build a correlation matrix to remove strongly associated dimensions and try to get below the 53 threshold. Correlation Matrices only work on numeric datasets, so I stripped the data again of its non-numeric dimensions. 
+
+```{r1, echo=FALSE, results=FALSE}
+library("caret")
+library("rpart")
+library("tree")
+library("randomForest")
+library("e1071")
+library("ggplot2")
+library("corrplot")
+library("nFactors")
+data <- read.csv("pmtraining.csv", header = TRUE)
+predictor <- as.vector(data$classe)
+
+data <- data[, apply(data, 2, function(x) !any(is.na(x)))] 
+# training_clean <- training[complete.cases(training), ]
+data <- data[sapply(data, is.numeric)]
+```
+
+The Correlation Matrix can be found below. I tried to remove the labels for the different variables, but could not find the code online. If you have any thoughts or recommendations, I would greatly appreciate it! 
+
+I developed a lost of the variables that had correlations greater than 0.8 and removed them from the data. I then added back the "classe" column, which is what we are trying to classify. You will notice that I removed the first 4 columns. This is the Index ("X") and other Timestamp data. When I first did the analysis, I found that I perfectly predicted all variables (Accuracy = 1). It turns out that the "classe" variable is listed in the dataset (all As, then all Bs, etc) - and the Index was being used to predict outcomes! 
+
+```{r2, echo=TRUE}
+matrix <- cor(data)
+corrplot(matrix, type="upper", order="hclust", tl.col="black", tl.srt=45, ann = FALSE)
+
+list = findCorrelation(matrix, cutoff=0.8)
+list = sort(list)
+data = data[,-c(list)]
+data = cbind(data, predictor)
+colnames(data)[44] <- "classe"
+data <- data[ , 5:44]
+```
+
+We now have the data prepared to do some analysis. We set aside 25% of the data for a holdout, and develop a Random Forest model on the training set. Using the model to predict "classe" variables in the test set, we find that we have a 99.51% accuracy, and that the "yaw_belt", "pitch_belt", and "pitch_forearm" variables are most important.
+
+This was then used on the test set for the exercise and provided 20/20 correct.
+
+```{r3, echo=TRUE}
+
+set.seed(1000)
+inTrain = createDataPartition(data$classe, p = 3/4)[[1]]
+training = data[ inTrain,]
+testing = data[-inTrain,]
+
+fol <- formula(classe ~ .)
+model2 <- randomForest(fol, data = training)
+modelresult2 <- predict(model2, testing, type = "class")
+confusionMatrix(testing$classe, modelresult2)
+rfimp <- varImp(model2, scale = TRUE)
+rfimp
+```
+
+
+# APPENDIX
+
+In doing this exercise, I learned a bit about PCA. It creates new variables from the dimensions, combining them to try and give predictive power to the variance. This is a Scree plot, which determines that there are 13 characteristics or PCA values, that together provide most of the explanatory power necessary for this analysis. 
+
+```{r4, echo=TRUE}
+#remove the one we want to predict
+ev <- eigen(cor(data[sapply(data, is.numeric)])) # get eigenvalues
+ap <- parallel(subject=nrow(data[sapply(data, is.numeric)]),var=ncol(data[sapply(data, is.numeric)]),
+               rep=100,cent=.05)
+nS <- nScree(x=ev$values, aparallel=ap$eigen$qevpea)
+plotnScree(nS)
+```
+
