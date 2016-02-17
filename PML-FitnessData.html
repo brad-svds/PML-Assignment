@@ -172,42 +172,6 @@ img {
 <p>Originally, I removed the rows with NAs (using complete.cases()), but that left me with 30 rows and 160 variables - it did not bring me any closer to making an inference. I then explored removing the columns with NAs. Doing some high-level analysis of the NAs, we can determine that there is no pattern of NAs relative to the object we are classifying (eg, distribution of NA between “classe” A, B, C, D, or E).</p>
 <p>Stripping the dataset of the variables with NAs, we were left with 93 variables. I originally attempted to run a Random Forest on this dataset and was surprised to find that R would not do an analysis on a set with greater than 53 dimensions. I was hoping I could determine which variables were most important and call it a day. :) Generally speaking, Random Forests have great predictive ability and are useful if we are not required to explain the logic embedded in the decision tree. (For example, healthcare applications might care about the path taken to a conclusion.)</p>
 <p>I played around a little with Principal Component Analysis (PCA, in the appendix) and realized I needed to build a correlation matrix to remove strongly associated dimensions and try to get below the 53 threshold. Correlation Matrices only work on numeric datasets, so I stripped the data again of its non-numeric dimensions.</p>
-<pre><code>## Warning: package 'caret' was built under R version 3.2.3</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre><code>## Warning: package 'ggplot2' was built under R version 3.2.3</code></pre>
-<pre><code>## Warning: package 'tree' was built under R version 3.2.3</code></pre>
-<pre><code>## randomForest 4.6-12</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: 'randomForest'</code></pre>
-<pre><code>## The following object is masked from 'package:ggplot2':
-## 
-##     margin</code></pre>
-<pre><code>## Loading required package: MASS</code></pre>
-<pre><code>## Loading required package: psych</code></pre>
-<pre><code>## 
-## Attaching package: 'psych'</code></pre>
-<pre><code>## The following object is masked from 'package:randomForest':
-## 
-##     outlier</code></pre>
-<pre><code>## The following objects are masked from 'package:ggplot2':
-## 
-##     %+%, alpha</code></pre>
-<pre><code>## Loading required package: boot</code></pre>
-<pre><code>## 
-## Attaching package: 'boot'</code></pre>
-<pre><code>## The following object is masked from 'package:psych':
-## 
-##     logit</code></pre>
-<pre><code>## The following object is masked from 'package:lattice':
-## 
-##     melanoma</code></pre>
-<pre><code>## 
-## Attaching package: 'nFactors'</code></pre>
-<pre><code>## The following object is masked from 'package:lattice':
-## 
-##     parallel</code></pre>
 <p>The Correlation Matrix can be found below. I tried to remove the labels for the different variables, but could not find the code online. If you have any thoughts or recommendations, I would greatly appreciate it!</p>
 <p>I developed a lost of the variables that had correlations greater than 0.8 and removed them from the data. I then added back the “classe” column, which is what we are trying to classify. You will notice that I removed the first 4 columns. This is the Index (“X”) and other Timestamp data. When I first did the analysis, I found that I perfectly predicted all variables (Accuracy = 1). It turns out that the “classe” variable is listed in the dataset (all As, then all Bs, etc) - and the Index was being used to predict outcomes!</p>
 <pre class="r"><code class="r"><span class="identifier">matrix</span> <span class="operator">&lt;-</span> <span class="identifier">cor</span><span class="paren">(</span><span class="identifier">data</span><span class="paren">)</span>
